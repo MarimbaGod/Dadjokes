@@ -2,12 +2,15 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import os
 import requests
-# import openai
-from elevenlabs import set_api_key, generate, play
+# from openai import OpenAI
+# from elevenlabs import set_api_key, generate, play
+import openai
+from io import BytesIO
 
 class JokeResponse(BaseModel):
     joke: str
     audio_base64: str
+
 
 router = APIRouter()
 
@@ -15,7 +18,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
 # openai.api_key = OPENAI_API_KEY
-set_api_key(ELEVENLABS_API_KEY)
+# set_api_key(ELEVENLABS_API_KEY)
 
 
 @router.get("/api/joke")
@@ -38,23 +41,18 @@ async def get_joke():
         joke = joke_response.choices[0].message['content']
         cleaned_joke = joke.replace("\n", " ")
 
-        #### HardCoded joke for testing purposes
-        # cleaned_joke = "Sure, here's a classic Dad joke for you:  Why don't skeletons fight each other?  Because they don't have the guts!"
-
-        # ElevenLabs TTS
-        # tts_url = "https://api.elevenlabs.io/synthesize"
-        # headers = {"Authorization": f"Bearer {ELEVENLABS_API_KEY}"}
-        # payload = {"text": joke}
-        # audio_response = requests.post(tts_url, headers=headers, json=payload)
-
-        # (removed because of issue with ffmpeg being seen by elevenlabs)
-        # audioUrl = audio_response.json()["audioUrl"]
-        # audio = generate(
-        #     text=cleaned_joke,
-        #     voice="Bella",
-        #     model="eleven_multilingual_v2"
+        # Use OpenAI TTS instead
+        # audio_response = openai.Audio.speech.create(
+        #     model="tts-1",
+        #     voice="onyx",
+        #     input=cleaned_joke
         # )
-        # play(audio)
-        # return JokeResponse(joke=joke, audioUrl=audioUrl)
+
+        # audio_bytes = BytesIO()
+        # audio_response.stream_to_file(audio_bytes)
+        # audio_bytes.seek(0)
+        # audio_base64 = base64.b64encode(audio_bytes.read()).decode("utf-8")
+
+        return JokeResponse(joke=cleaned_joke, audio_base64=audio_base64)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
