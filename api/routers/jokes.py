@@ -3,23 +3,29 @@ from pydantic import BaseModel
 import os
 import requests
 # from openai import OpenAI
-# from elevenlabs import set_api_key, generate, play
 import openai
-from io import BytesIO
+import random
 
 class JokeResponse(BaseModel):
     joke: str
-    audio_base64: str
 
+def get_random_prompt():
+    prompts = [
+        "Can you share a dad joke I haven't heard?",
+        "Surprise me with a clever Dad joke!",
+        "Tell me a joke about birds",
+        "I need a laugh",
+        "I need a knock knock joke",
+        "I need a dad joke",
+        "I need a dad joke about food",
+        "I need a comically bad joke to tell my wife",
+        "I need a dad joke to tell my coworker",
+        "I just need a joke to say to a stranger at the dog park so I can tell them their dog pooped without feeling awkward"
+    ]
+    return random.choice(prompts)
 
 router = APIRouter()
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-
-# openai.api_key = OPENAI_API_KEY
-# set_api_key(ELEVENLABS_API_KEY)
-
 
 @router.get("/api/joke")
 async def get_joke():
@@ -28,9 +34,7 @@ async def get_joke():
         MODEL = "gpt-3.5-turbo"
         user_messages = [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Tell me a good Dad Joke."},
-            {"role": "user", "content": "Give me a funny joke."},
-            {"role": "user", "content": "Share a humorous joke with me."},
+            {"role": "user", "content": get_random_prompt()},
         ]
         joke_response = openai.ChatCompletion.create(
             model=MODEL,
@@ -38,21 +42,8 @@ async def get_joke():
             temperature=0.9,
         )
         # # cleans up joke text
-        joke = joke_response.choices[0].message['content']
-        cleaned_joke = joke.replace("\n", " ")
+        joke = joke_response.choices[0].message['content'].strip()
 
-        # Use OpenAI TTS instead
-        # audio_response = openai.Audio.speech.create(
-        #     model="tts-1",
-        #     voice="onyx",
-        #     input=cleaned_joke
-        # )
-
-        # audio_bytes = BytesIO()
-        # audio_response.stream_to_file(audio_bytes)
-        # audio_bytes.seek(0)
-        # audio_base64 = base64.b64encode(audio_bytes.read()).decode("utf-8")
-
-        return JokeResponse(joke=cleaned_joke, audio_base64=audio_base64)
+        return JokeResponse(joke=joke)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
